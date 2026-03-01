@@ -1,23 +1,51 @@
-name: OWASP ZAP Scan
+name: OWASP ZAP Docker Scan
 
 on:
-  pull_request:
   push:
     branches:
       - main
+  pull_request:
   workflow_dispatch:
 
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.10.0
+      # Ensure workspace is writable by Docker container
+      - name: Fix workspace permissions
+        run: sudo chmod -R 777 ${{ github.workspace }}
+
+      - name: Run OWASP ZAP Baseline Scan (Docker)
+        run: |
+          docker pull ghcr.io/zaproxy/zaproxy:stable
+          
+          docker run --rm \
+            -v ${{ github.workspace }}:/zap/wrk:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t https://your-staging-site.com \
+            -r zap-report.html \
+            -j zap-report.json \
+            -w zap-report.md
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
         with:
-          target: 'https://demo.testfire.net/'
+          name: zap-html-report
+          path: zap-report.html
+
+      - name: Upload JSON Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-json-report
+          path: zap-report.json
+
+      - name: Upload Markdown Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-md-report
+          path: zap-report.md
