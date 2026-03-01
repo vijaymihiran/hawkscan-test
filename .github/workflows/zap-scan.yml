@@ -27,7 +27,7 @@ jobs:
             -v ${{ github.workspace }}:/zap/wrk:rw \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
-            -t https://your-staging-site.com \
+            -t https://demo.testfire.net \
             -r zap-report.html \
             -j zap-report.json \
             -w zap-report.md
