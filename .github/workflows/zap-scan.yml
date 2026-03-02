@@ -10,7 +10,7 @@ on:
       target:
         description: "Target URL to scan"
         required: true
-        default: "https://your-staging-site.com"
+        default: "http://demo.testfire.net"
 
 jobs:
   zap_scan:
@@ -24,25 +24,24 @@ jobs:
         run: sudo chmod -R 777 ${{ github.workspace }}
 
       - name: Set Target URL
-        id: set_target
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "TARGET=${{ github.event.inputs.target }}" >> $GITHUB_ENV
           else
-            echo "TARGET=https://demo.testfire.net" >> $GITHUB_ENV
+            echo "TARGET=http://demo.testfire.net" >> $GITHUB_ENV
           fi
 
       - name: Pull OWASP ZAP Docker Image
         run: docker pull ghcr.io/zaproxy/zaproxy:stable
 
-      - name: Run OWASP ZAP Baseline Scan
+      - name: Run OWASP ZAP Baseline Scan (XML Output)
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/zap/wrk:rw \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t $TARGET \
-            -J zap-report.json \
+            -x zap-report.xml \
             -r zap-report.html \
             || true
 
@@ -52,18 +51,18 @@ jobs:
           name: zap-html-report
           path: zap-report.html
 
-      - name: Upload ZAP JSON Report
+      - name: Upload ZAP XML Report
         uses: actions/upload-artifact@v4
         with:
-          name: zap-json-report
-          path: zap-report.json
+          name: zap-xml-report
+          path: zap-report.xml
 
       - name: Upload Results to DefectDojo
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
-            -F "scan_type=ZAP Scan (JSON)" \
-            -F "file=@zap-report.json" \
+            -F "scan_type=ZAP Scan" \
+            -F "file=@zap-report.xml" \
             -F "product_name=${{ secrets.DD_PRODUCT_NAME }}" \
             -F "engagement_name=${{ secrets.DD_ENGAGEMENT_NAME }}" \
             -F "auto_create_context=true" \
