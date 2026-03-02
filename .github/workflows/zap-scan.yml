@@ -29,7 +29,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "TARGET=${{ github.event.inputs.target }}" >> $GITHUB_ENV
           else
-            echo "TARGET=https://testphp.vulnweb.com" >> $GITHUB_ENV
+            echo "TARGET=https://demo.testfire.net" >> $GITHUB_ENV
           fi
 
       - name: Pull OWASP ZAP Docker Image
