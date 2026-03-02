@@ -1,4 +1,4 @@
-name: OWASP ZAP Docker Scan
+name: OWASP ZAP Scan + DefectDojo Upload
 
 on:
   push:
@@ -6,46 +6,65 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Target URL to scan"
+        required: true
+        default: "https://your-staging-site.com"
 
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Ensure workspace is writable by Docker container
-      - name: Fix workspace permissions
+      - name: Fix Workspace Permissions
         run: sudo chmod -R 777 ${{ github.workspace }}
 
-      - name: Run OWASP ZAP Baseline Scan (Docker)
+      - name: Set Target URL
+        id: set_target
         run: |
-          docker pull ghcr.io/zaproxy/zaproxy:stable
-          
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TARGET=${{ github.event.inputs.target }}" >> $GITHUB_ENV
+          else
+            echo "TARGET=https://testphp.vulnweb.com" >> $GITHUB_ENV
+          fi
+
+      - name: Pull OWASP ZAP Docker Image
+        run: docker pull ghcr.io/zaproxy/zaproxy:stable
+
+      - name: Run OWASP ZAP Baseline Scan
+        run: |
           docker run --rm \
             -v ${{ github.workspace }}:/zap/wrk:rw \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
-            -t https://demo.testfire.net \
+            -t $TARGET \
+            -J zap-report.json \
             -r zap-report.html \
-            -j zap-report.json \
-            -w zap-report.md
+            -m 5
 
-      - name: Upload HTML Report
+      - name: Upload ZAP HTML Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-html-report
           path: zap-report.html
 
-      - name: Upload JSON Report
+      - name: Upload ZAP JSON Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-json-report
           path: zap-report.json
 
-      - name: Upload Markdown Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-md-report
-          path: zap-report.md
+      - name: Upload Results to DefectDojo
+        run: |
+          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+            -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
+            -F "scan_type=ZAP Scan" \
+            -F "file=@zap-report.json" \
+            -F "product_name=${{ secrets.DD_PRODUCT_NAME }}" \
+            -F "engagement_name=${{ secrets.DD_ENGAGEMENT_NAME }}" \
+            -F "auto_create_context=true" \
+            -F "close_old_findings=true"
