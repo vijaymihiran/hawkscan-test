@@ -62,7 +62,7 @@ jobs:
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
-            -F "scan_type=ZAP Scan" \
+            -F "scan_type=ZAP Scan (JSON)" \
             -F "file=@zap-report.json" \
             -F "product_name=${{ secrets.DD_PRODUCT_NAME }}" \
             -F "engagement_name=${{ secrets.DD_ENGAGEMENT_NAME }}" \
